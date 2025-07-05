@@ -2,10 +2,13 @@ import os
 import time
 import torch
 from torchvision import datasets, transforms
+import torchvision.models as models
 import torch.nn as nn
 import torch.nn.functional as F
 
 cwd = os.getcwd()
+
+""" --> Old (self constructed) Model
 
 class DeeperCNN(nn.Module):
     def __init__(self):
@@ -48,6 +51,8 @@ class DeeperCNN(nn.Module):
         # final output layer
         x = self.fc2(x)
         return x
+"""
+
 
 
 def train_model(model, criterion, optimizer, train_loader, num_epochs, device):
@@ -170,9 +175,18 @@ def init_data():
     print(f"Datasets created (train): {train_dataset.classes} and (test) {test_dataset.classes}")
     print(f"Creating Convolutional Neural Network (CNN) model...")
 
-    model = DeeperCNN()
+    #model = DeeperCNN()
+    model = models.resnet18(weights='IMAGENET1K_V1') # Loads in the big resnet18 model with the weight "IMAGENET1K_V1" (76.130% accuracy (source: https://docs.pytorch.org/vision/main/models.html)
     model.to(device) # Tell the model that it should use the gpu (cuda) or (if no cuda is found) the cpu
     print(model)
+
+    for params in model.parameters(): # This for loop kinda tells the model to ignore every betterments because the model is pretrained and does not need a new training
+        params.requires_grad = False
+
+    num_ftrs = model.fc.in_features
+    fc2 = nn.Linear(num_ftrs, 2)
+    fc2.to(device=device)
+    model.fc = fc2
 
     # Defining an 'teacher' like optimizer
     criterion = nn.CrossEntropyLoss()
