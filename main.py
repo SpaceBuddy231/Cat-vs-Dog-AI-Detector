@@ -7,30 +7,42 @@ import torch.nn.functional as F
 
 cwd = os.getcwd()
 
-class SimpleCNN(nn.Module):
+class DeeperCNN(nn.Module):
     def __init__(self):
-        super(SimpleCNN, self).__init__()
+        super(DeeperCNN, self).__init__()
         # First convolutional layer: 3 input channels (RGB), 16 output channels
         # Kernel size 3x3, padding=1 to preserve spatial dimensions
+        # -> "Analyzing" simple color transitions and lines in different angles
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
         # Second convolutional layer: 16 input channels, 32 output channels
         # Kernel size 3x3, padding=1 to preserve spatial dimensions
+        # -> Binding all the stuff from conv1 to more complexe forms like edges, curves and simple textures
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        # Max pooling layer, halves spatial dimensions (160x160 → 80x80 → 40x40)
+        # Third convolutional layer: 32 input channels, 64 output channels
+        # Kernel size 3x3, padding=1 to preserve spatial dimension
+        # -> Form bodyparts out of the results of conv2 (like ears, eyes, limbs and so on)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        # Max pooling layer, halves spatial dimensions (160x160 → 80x80 → 40x40 → 20x20)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         # Fully connected layers for classification
-        # Input features: 32 * 40 * 40
-        self.fc1 = nn.Linear(32 * 40 * 40, 512)
+        # Input features: 64 * 20 * 20
+        self.fc1 = nn.Linear(64 * 20 * 20, 256)
         # Output layer: 2 classes (cat, dog)
-        self.fc2 = nn.Linear(512, 2)
+        self.fc2 = nn.Linear(256, 2)
 
     def forward(self, x):
+        #print("Input shape:", x.shape) # debug puposes
         # conv1 → ReLU → pool
         x = self.pool(F.relu(self.conv1(x)))
+        #print("Shape after conv1/pool:", x.shape) # debug puposes
         # conv2 → ReLU → pool
         x = self.pool(F.relu(self.conv2(x)))
+        #print("Shape after conv2/pool:", x.shape) # debug puposes
+        # conv2 → ReLU → pool
+        x = self.pool(F.relu(self.conv3(x)))
+        #print("Shape after conv3/pool:", x.shape) # debug puposes
         # flatten feature maps
-        x = x.view(-1, 32 * 40 * 40)
+        x = x.view(-1, 64 * 20 * 20)
         # first fully connected layer with ReLU
         x = F.relu(self.fc1(x))
         # final output layer
@@ -158,7 +170,7 @@ def init_data():
     print(f"Datasets created (train): {train_dataset.classes} and (test) {test_dataset.classes}")
     print(f"Creating Convolutional Neural Network (CNN) model...")
 
-    model = SimpleCNN()
+    model = DeeperCNN()
     model.to(device) # Tell the model that it should use the gpu (cuda) or (if no cuda is found) the cpu
     print(model)
 
@@ -169,7 +181,7 @@ def init_data():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     print("Model created.")
 
-    train_model(model, criterion, optimizer, train_loader, num_epochs=160, device=device)
+    train_model(model, criterion, optimizer, train_loader, num_epochs=50, device=device)
 
     test_model(model, test_loader, device=device)
 
