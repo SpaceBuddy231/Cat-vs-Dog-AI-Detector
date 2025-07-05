@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 from torchvision import datasets, transforms
 import torch.nn as nn
@@ -37,13 +38,19 @@ class SimpleCNN(nn.Module):
         return x
 
 
-def train_model(model, criterion, optimizer, train_loader, num_epochs):
-    print("\n\n\n”<--- Starting Training --->\n")
+def train_model(model, criterion, optimizer, train_loader, num_epochs, device):
+    print("\n\n\n<--- Starting Training --->\n")
+    
+    # Start timing
+    start_time = time.time()
+    
     # Starting a for loop for the number of epochs (more eporchs = more training -> more accuracy)
     for epoch in range(num_epochs):
         # Loop through the training data
         print(f"Epoch {epoch+1}/{num_epochs}")
         for i, (images, labels) in enumerate(train_loader):
+            images = images.to(device)
+            labels = labels.to(device)
             # Step 1: AI guesses if the image is represents a cat or a dog
             outputs = model(images)
 
@@ -63,9 +70,14 @@ def train_model(model, criterion, optimizer, train_loader, num_epochs):
             if (i+1) % 100 == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
 
+    # Calculate training time
+    end_time = time.time()
+    training_time = end_time - start_time
+    
+    print(f"\nTaken time for Training: {training_time:.2f} seconds")
     print("\n<--- Finished Training --->\n")
 
-def test_model(model, test_loader):
+def test_model(model, test_loader, device): 
     print("--- Starting Testing ---")
     # This step appears to be important for Pytorch to tell the model that we are in evaluation mode
     model.eval()
@@ -75,6 +87,8 @@ def test_model(model, test_loader):
         correct = 0
         total = 0
         for images, labels in test_loader:
+            images = images.to(device)
+            labels = labels.to(device)
             # Let the AI decide if the image is a cat or a dog
             outputs = model(images)
 
@@ -94,7 +108,13 @@ def test_model(model, test_loader):
 
 
 def init_data():
-    data = cwd + '/data'
+
+    # Check for GPU (GPU is better than CPU for training and testing purposes)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Cuda (Compute Unified Device Architecture) is a gate between the hardware (actual GPU) and Software (AI)
+
+    print(f"Using device: {device}")
+
+    data = cwd + '/data'    
     if not os.path.exists(data):
         print("./data does not exist. Without the data folder program will not work. Aborting.")
         exit(1)
@@ -115,9 +135,13 @@ def init_data():
 
     # Setting up the training dataset
     train_transforms = transforms.Compose([
+        transforms.RandomRotation(10),
+        transforms.RandomHorizontalFlip(),
         transforms.Resize(IMG_SIZE),
-        transforms.ToTensor(),
+        transforms.ToTensor()
     ])
+
+
 
     train_dataset = datasets.ImageFolder(train_dir, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -135,6 +159,7 @@ def init_data():
     print(f"Creating Convolutional Neural Network (CNN) model...")
 
     model = SimpleCNN()
+    model.to(device) # Tell the model that it should use the gpu (cuda) or (if no cuda is found) the cpu
     print(model)
 
     # Defining an 'teacher' like optimizer
@@ -144,9 +169,9 @@ def init_data():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     print("Model created.")
 
-    train_model(model, criterion, optimizer, train_loader, num_epochs=10)
+    train_model(model, criterion, optimizer, train_loader, num_epochs=160, device=device)
 
-    test_model(model, test_loader)
+    test_model(model, test_loader, device=device)
 
     # Save the trained and tested model (because it would be a waste of time to train it again and again every single time)
     torch.save(model.state_dict(), 'cat_dog_cnn.pth')

@@ -1,3 +1,5 @@
 env/
 .github/
 *.pth
+check_gpu.py
+main_backup.py
