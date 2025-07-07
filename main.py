@@ -200,6 +200,7 @@ def init_data():
     test_model(model, test_loader, device=device)
 
     # Save the trained and tested model (because it would be a waste of time to train it again and again every single time)
+    print("Saving model (as .pth)")
     torch.save(model.state_dict(), 'cat_dog_cnn.pth')
 
 
